@@ -1,5 +1,5 @@
+require('dotenv').config(); // Для загрузки переменных окружения
 const { Telegraf } = require('telegraf');
-require('dotenv').config();
 
 // Получаем токен бота из переменной окружения
 const bot = new Telegraf(process.env.BOT_TOKEN);
