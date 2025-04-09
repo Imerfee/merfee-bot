@@ -16,13 +16,13 @@ client = gspread.authorize(creds)
 sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
 
 # Создание бота
-TOKEN = '7426766382:AAG-Fw82VsIKowP_c3ZvEoaVQQoa_LHwXeU'
+TOKEN = '7426766382:AAG-Fw82VsIKowP_c3ZvEoaVQQoa_LhMxEu'
 bot = telebot.TeleBot(TOKEN)
 
 # Приветственное сообщение на разных языках
 texts = {
     'en': {
-        'welcome': 'Welcome to Merfee Exchange! Please choose your language:',
+        'welcome': 'Welcome to Merfee Exchange! Please choose your languages:',
         'choose_language': 'Please choose a language:',
         'choose_currency': 'Please choose the currency you want to buy:'
     },
@@ -36,6 +36,7 @@ texts = {
 # Инициализация Flask
 app = Flask(__name__)
 
+# Обработка Webhook запросов
 @app.route('/' + TOKEN, methods=["POST"])
 def handle_webhook():
     json_str = request.get_data(as_text=True)  # Получаем данные из запроса
@@ -53,4 +54,4 @@ def start(message):
 
 # Запуск Flask сервера
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host='0.0.0.0', port=5000)
