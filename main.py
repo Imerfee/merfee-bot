@@ -1,9 +1,9 @@
 import os
 import telebot
 import json
-import gsread
 from flask import Flask, request
 from google.oauth2.service_account import Credentials
+import gspread
 
 # Загрузка ключа из переменной окружения
 creds = Credentials.from_service_account_info(
@@ -12,7 +12,7 @@ creds = Credentials.from_service_account_info(
 )
 
 # Подключение к Google Таблицам
-client = gsread.authorize(creds)
+client = gspread.authorize(creds)
 sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
 
 # Создание бота
