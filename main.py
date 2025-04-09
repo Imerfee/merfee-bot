@@ -1,29 +1,37 @@
-import telebot
-from flask import Flask, request
-import os
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.types import ParseMode
+from aiogram.utils import executor
 
-# Инициализация Flask приложения
-app = Flask(__name__)
+# Ваш токен от бота Telegram
+TOKEN = '7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU'  # Замените на ваш
 
-# Получаем токен бота из переменной окружения
-TOKEN = os.getenv("7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU")
-bot = telebot.TeleBot(TOKEN)
+# Инициализация бота и диспетчера
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+dp.middleware.setup(LoggingMiddleware())
 
-# Обработчик команды /start
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Привет! Я твой Telegram бот.")
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
 
-# Веб-хук для обработки сообщений
-@app.route('/' + TOKEN, methods=['POST'])
-def webhook():
-    json_str = request.get_data(as_text=True)
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "OK", 200
+# Приветствие и меню выбора языка
+@dp.message_handler(commands=['start'])
+async def cmd_start(message: types.Message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("English")
+    btn2 = types.KeyboardButton("Русский")
+    btn3 = types.KeyboardButton("Deutsch")
+    btn4 = types.KeyboardButton("Français")
+    markup.add(btn1, btn2, btn3, btn4)
+    await message.answer("Welcome to Merfee Exchange! Please choose your language:", reply_markup=markup)
 
-if __name__ == "__main__":
-    # Удаляем старый веб-хук и устанавливаем новый
-    bot.remove_webhook()
-    bot.set_webhook(url=f'https://your-service-name.onrender.com/{TOKEN}')
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+# Обработка выбора языка
+@dp.message_handler(lambda message: message.text in ['English', 'Русский', 'Deutsch', 'Français'])
+async def choose_language(message: types.Message):
+    language = message.text
+    await message.answer(f'You have selected: {language}', reply_markup=types.ReplyKeyboardRemove())
+
+# Запуск бота
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
