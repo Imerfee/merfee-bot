@@ -1,3 +1,4 @@
+import os
 import telebot
 import gspread
 from google.auth.transport.requests import Request
