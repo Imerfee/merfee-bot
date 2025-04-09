@@ -49,12 +49,20 @@ texts = {
     }
 }
 
-# Подключение к Google Таблицам
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-client = gspread.authorize(creds)
-sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
+import os
+from google.oauth2.service_account import Credentials
+import json
 
+# Загружаем ключ из переменной окружения
+creds = Credentials.from_service_account_info(
+    json.loads(os.getenv('GOOGLE_API_CREDENTIALS')),  # Чтение ключа из переменной окружения
+    scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
+)
+
+# Подключение к Google Таблицам
+import gspread
+client = gspread.authorize(creds)
+sheet = client.open_by_key('your_spreadsheet_key').sheet1
 # Приветственное сообщение и выбор языка
 @bot.message_handler(commands=['start'])
 def start(message):
