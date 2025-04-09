@@ -1,46 +1,104 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.utils import executor
-from flask import Flask
+import telebot
+import gspread
+from google.auth.transport.requests import Request
+from google.oauth2.service_account import Credentials
+from telebot import types
 
-API_TOKEN = '7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU'  # Укажите ваш токен
+# Ваш токен для бота
+TOKEN = '7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU'
+bot = telebot.TeleBot(TOKEN)
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
-dp.middleware.setup(LoggingMiddleware())
+# Загружаем ключ из переменной окружения
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_API_CREDENTIALS')
 
-app = Flask(__name__)
+# Google Sheets API
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
-# Стартовое сообщение бота
-@dp.message_handler(commands=['start'])
-async def cmd_start(message: types.Message):
-    await message.answer("Привет! Выберите язык. /choose_language")
+# Авторизация для работы с Google Sheets
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+gc = gspread.authorize(creds)
 
-# Обработчик команды выбора языка
-@dp.message_handler(commands=['choose_language'])
-async def cmd_choose_language(message: types.Message):
+# Открытие Google Таблицы
+worksheet = gc.open('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
+
+# Приветственное сообщение на разных языках
+texts = {
+    'en': {
+        'welcome': 'Welcome to the Merfee exchange. Choose a language:',
+        'choose_language': 'Choose a language:',
+        'choose_currency': 'Choose a currency you want to give:',
+        'exchange': 'Choose a currency you want to receive:',
+        'amount': 'Enter the amount you want to exchange:',
+        'confirm': 'Do you want to exchange?'
+    },
+    'ru': {
+        'welcome': 'Добро пожаловать в обмен валют Merfee. Выберите язык:',
+        'choose_language': 'Выберите язык:',
+        'choose_currency': 'Выберите валюту, которую хотите отдать:',
+        'exchange': 'Выберите валюту, которую хотите получить:',
+        'amount': 'Введите сумму для обмена:',
+        'confirm': 'Вы хотите обменять?'
+    }
+}
+
+# Функция, которая отправляет сообщения пользователю
+@bot.message_handler(commands=['start'])
+def start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("English", "Русский")
-    await message.answer("Выберите язык:", reply_markup=markup)
+    markup.add(types.KeyboardButton("English"))
+    markup.add(types.KeyboardButton("Русский"))
+    bot.send_message(message.chat.id, texts['ru']['welcome'], reply_markup=markup)
 
-# Логика выбора языка
-@dp.message_handler(lambda message: message.text in ["English", "Русский"])
-async def language_choice(message: types.Message):
-    if message.text == "English":
-        await message.answer("You selected English.")
-    elif message.text == "Русский":
-        await message.answer("Вы выбрали русский.")
+# Обработка выбора языка
+@bot.message_handler(func=lambda message: message.text in ['English', 'Русский'])
+def language_choice(message):
+    language = 'en' if message.text == 'English' else 'ru'
+    markup = types.ReplyKeyboardRemove()
+    bot.send_message(message.chat.id, texts[language]['choose_currency'], reply_markup=markup)
+    # Сохраняем выбранный язык для дальнейшего использования
+    bot.register_next_step_handler(message, currency_choice, language)
 
-# Вебхук для обработки запросов (не обязательно, если вы хотите использовать поллинг)
-@app.route('/' + API_TOKEN, methods=["POST"])
-async def handle_webhook(request):
-    json_str = await request.get_data(as_text=True)
-    update = types.Update.de_json(json_str)
-    await dp.process_update(update)
-    return "OK", 200
+# Функция для выбора валюты
+def currency_choice(message, language):
+    # Получаем список валют из Google Таблицы
+    currencies = worksheet.col_values(1)  # Предположим, что валюты находятся в первом столбце
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for currency in currencies:
+        markup.add(types.KeyboardButton(currency))
+    bot.send_message(message.chat.id, texts[language]['choose_currency'], reply_markup=markup)
+    bot.register_next_step_handler(message, exchange_choice, language)
 
+# Функция для выбора валюты для обмена
+def exchange_choice(message, language):
+    currency_to_give = message.text
+    bot.send_message(message.chat.id, texts[language]['amount'])
+    bot.register_next_step_handler(message, amount_choice, language, currency_to_give)
+
+# Ввод суммы
+def amount_choice(message, language, currency_to_give):
+    amount = message.text
+    # Находим валюту, которую мы хотим получить, из Google Таблицы
+    # Предположим, что у нас есть данные о валютных курсах
+    row = worksheet.find(currency_to_give).row
+    exchange_rate = worksheet.cell(row, 2).value  # Валютный курс во втором столбце
+    amount_in_new_currency = float(amount) * float(exchange_rate)
+    
+    # Отправляем результат
+    bot.send_message(message.chat.id, f'{texts[language]["exchange"]}: {currency_to_give} {amount} = {amount_in_new_currency} in another currency.')
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton(texts[language]['confirm']))
+    markup.add(types.KeyboardButton("Contact Manager"))
+    bot.send_message(message.chat.id, texts[language]['confirm'], reply_markup=markup)
+
+# Отправка запроса на обмен
+@bot.message_handler(func=lambda message: message.text in [texts['ru']['confirm'], 'Contact Manager'])
+def process_exchange(message):
+    if message.text == texts['ru']['confirm']:
+        bot.send_message('your_telegram_id', 'User wants to exchange currency.')
+    elif message.text == 'Contact Manager':
+        bot.send_message('your_telegram_id', 'User wants to contact the manager.')
+
+# Запуск бота
 if __name__ == '__main__':
-    # Запуск бота
-    from aiogram import executor
-    executor.start_polling(dp, skip_updates=True)
+    bot.polling(none_stop=True)
