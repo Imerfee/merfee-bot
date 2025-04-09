@@ -1,109 +1,101 @@
-import telebot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-TOKEN = "7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU"
-bot = telebot.TeleBot(TOKEN)
-
-# Временное хранилище для хранения выбранного языка
-user_lang = {}
-
-# Тексты по языкам
-texts = {
-    'ru': {
-        'welcome': "Добро пожаловать в Merfee! Выберите валюту, которую хотите обменять.",
-        'language_selected': "Язык установлен: Русский",
-        'choose_language': "Пожалуйста, выберите язык:",
-        'languages': ["🇬🇧 English", "🇷🇺 Русский", "🇩🇪 Deutsch", "🇫🇷 Français"],
-        'choose_currency': "Пожалуйста, выберите валюту, которую хотите купить:",
-        'choose_sell_currency': "Теперь выберите валюту, которую хотите продать:",
-        'enter_amount': "Введите сумму для обмена:"
-    },
-    'en': {
-        'welcome': "Welcome to Merfee! Please choose the currency you want to exchange.",
-        'language_selected': "Language set: English",
-        'choose_language': "Please choose your language:",
-        'languages': ["🇬🇧 English", "🇷🇺 Russian", "🇩🇪 German", "🇫🇷 French"],
-        'choose_currency': "Please choose the currency you want to buy:",
-        'choose_sell_currency': "Now, choose the currency you want to sell:",
-        'enter_amount': "Enter the amount you want to exchange:"
-    },
-    'de': {
-        'welcome': "Willkommen bei Merfee! Wählen Sie, was Sie tauschen möchten.",
-        'language_selected': "Sprache eingestellt: Deutsch",
-        'choose_language': "Bitte wählen Sie eine Sprache:",
-        'languages': ["🇬🇧 Englisch", "🇷🇺 Russisch", "🇩🇪 Deutsch", "🇫🇷 Französisch"],
-        'choose_currency': "Bitte wählen Sie die Währung, die Sie kaufen möchten:",
-        'choose_sell_currency': "Wählen Sie nun die Währung, die Sie verkaufen möchten:",
-        'enter_amount': "Geben Sie den Betrag ein, den Sie tauschen möchten:"
-    },
-    'fr': {
-        'welcome': "Bienvenue sur Merfee ! Veuillez choisir ce que vous souhaitez échanger.",
-        'language_selected': "Langue définie : Français",
-        'choose_language': "Veuillez choisir une langue :",
-        'languages': ["🇬🇧 Anglais", "🇷🇺 Russe", "🇩🇪 Allemand", "🇫🇷 Français"],
-        'choose_currency': "Veuillez choisir la monnaie que vous souhaitez acheter :",
-        'choose_sell_currency': "Choisissez maintenant la monnaie que vous souhaitez vendre :",
-        'enter_amount': "Entrez le montant que vous souhaitez échanger :"
-    }
-}
-
 import os
+import telebot
+from telebot import types
+import gspread
 from google.oauth2.service_account import Credentials
 import json
 
-# Загружаем ключ из переменной окружения
+# Загрузка ключа из переменной окружения
 creds = Credentials.from_service_account_info(
-    json.loads(os.getenv('GOOGLE_API_CREDENTIALS')),  # Чтение ключа из переменной окружения
+    json.loads(os.getenv('GOOGLE_API_CREDENTIALS')), 
     scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"]
 )
 
 # Подключение к Google Таблицам
-import gspread
 client = gspread.authorize(creds)
 sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
-# Приветственное сообщение и выбор языка
+
+# Создание бота
+TOKEN = '7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU'
+bot = telebot.TeleBot(TOKEN)
+
+# Приветственное сообщение на разных языках
+texts = {
+    'en': {
+        'welcome': 'Welcome to Merfee Exchange! Please choose your language:',
+        'choose_language': 'Please choose a language:',
+        'choose_currency': 'Please choose the currency you want to buy:',
+        'choose_sell_currency': 'Please choose the currency you want to sell:',
+        'enter_amount': 'Enter the amount you wish to exchange',
+    },
+    'ru': {
+        'welcome': 'Добро пожаловать в Merfee! Выберите язык:',
+        'choose_language': 'Выберите язык:',
+        'choose_currency': 'Выберите валюту, которую хотите купить:',
+        'choose_sell_currency': 'Выберите валюту, которую хотите продать:',
+        'enter_amount': 'Введите сумму, которую хотите обменять',
+    },
+    'de': {
+        'welcome': 'Willkommen bei Merfee! Bitte wählen Sie Ihre Sprache:',
+        'choose_language': 'Wählen Sie eine Sprache:',
+        'choose_currency': 'Bitte wählen Sie die Währung, die Sie kaufen möchten:',
+        'choose_sell_currency': 'Bitte wählen Sie die Währung, die Sie verkaufen möchten:',
+        'enter_amount': 'Geben Sie den Betrag ein, den Sie tauschen möchten',
+    },
+    'fr': {
+        'welcome': 'Bienvenue sur Merfee! Veuillez choisir votre langue:',
+        'choose_language': 'Veuillez choisir une langue:',
+        'choose_currency': 'Veuillez choisir la monnaie que vous souhaitez acheter:',
+        'choose_sell_currency': 'Veuillez choisir la monnaie que vous souhaitez vendre:',
+        'enter_amount': 'Entrez le montant que vous souhaitez échanger',
+    }
+}
+
+# Словарь для хранения выбранного языка пользователя
+user_lang = {}
+
+# Функция для отправки сообщения о выборе языка
 @bot.message_handler(commands=['start'])
 def start(message):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    for lang in texts['en']['languages']:
-        markup.add(KeyboardButton(lang))
-    bot.send_message(message.chat.id, texts['en']['choose_language'], reply_markup=markup)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for lang in texts['en']['choose_language']:
+        markup.add(types.KeyboardButton(lang))
+    bot.send_message(message.chat.id, texts[user_lang.get(message.chat.id, 'en')]['choose_language'], reply_markup=markup)
 
-# Обработка выбора языка
+# Функция для обработки выбора языка
 @bot.message_handler(func=lambda message: message.text in ['English', 'Русский', 'Deutsch', 'Français'])
 def set_language(message):
-    user_lang[message.chat.id] = message.text
-    bot.send_message(message.chat.id, texts[user_lang[message.chat.id]]['language_selected'])
-    bot.send_message(message.chat.id, texts[user_lang[message.chat.id]]['welcome'])
+    user_lang[message.chat.id] = message.text.lower()  # Сохраняем выбранный язык
+    bot.send_message(message.chat.id, texts[user_lang[message.chat.id]]['choose_currency'])
+    choose_currency(message)
 
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("USDT"), KeyboardButton("BTC"), KeyboardButton("ETH"))
-    markup.add(KeyboardButton("UAH"), KeyboardButton("CHF"))
+# Функция для выбора валюты
+def choose_currency(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    currencies = ["USD", "EUR", "BTC", "ETH", "UAH", "CHF"]  # Добавьте валюты из вашего списка
+    for currency in currencies:
+        markup.add(types.KeyboardButton(currency))
     bot.send_message(message.chat.id, texts[user_lang[message.chat.id]]['choose_currency'], reply_markup=markup)
 
-# Обработка выбора валюты для покупки
-@bot.message_handler(func=lambda message: message.text in ['USDT', 'BTC', 'ETH', 'UAH', 'CHF'])
-def choose_currency_to_sell(message):
-    user_id = message.chat.id
-    bot.send_message(user_id, texts[user_lang[user_id]]['choose_sell_currency'])
+# Функция для выбора валюты продажи
+@bot.message_handler(func=lambda message: message.text in ["USD", "EUR", "BTC", "ETH", "UAH", "CHF"])  # Убедитесь, что это валидные валюты
+def choose_sell_currency(message):
+    user_lang[message.chat.id] = message.text  # Сохраняем валюту
+    bot.send_message(message.chat.id, texts[user_lang[message.chat.id]]['choose_sell_currency'])
 
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("USDT"), KeyboardButton("BTC"), KeyboardButton("ETH"))
-    markup.add(KeyboardButton("UAH"), KeyboardButton("CHF"))
-    bot.send_message(user_id, texts[user_lang[user_id]]['choose_sell_currency'], reply_markup=markup)
+# Функция для получения суммы и расчёта
+@bot.message_handler(func=lambda message: message.text.isdigit())  # Если введена сумма
+def enter_amount(message):
+    amount = int(message.text)
+    # Получение курса валют из Google таблицы
+    rate = sheet.cell(1, 2).value  # Пример: курс из таблицы
+    result = amount * float(rate)
+    bot.send_message(message.chat.id, f'You will receive: {result} in selected currency')
 
-# Запрос суммы для обмена
-@bot.message_handler(func=lambda message: message.text in ['USDT', 'BTC', 'ETH', 'UAH', 'CHF'])
-def request_amount(message):
-    user_id = message.chat.id
-    bot.send_message(user_id, texts[user_lang[user_id]]['enter_amount'])
+# Функция для отправки заявки в ЛС
+@bot.message_handler(func=lambda message: message.text == "Exchange")
+def process_exchange(message):
+    bot.send_message('@imerfee', f'User {message.chat.id} has requested an exchange: {message.text}')  # Отправка в ЛС
 
-# Обработка обмена
-@bot.message_handler(func=lambda message: message.text == 'Обменять')
-def send_request_to_user(message):
-    bot.send_message("@imerfee", f"Заявка на обмен от @{message.chat.username}: {message.text}")
-    bot.send_message(message.chat.id, "Заявка отправлена!")
-
+# Запуск бота
 bot.polling()
