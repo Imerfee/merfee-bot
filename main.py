@@ -1,8 +1,7 @@
 import os
 import telebot
 import json
-import gs
-import gsread
+import gspread
 from google.oauth2.service_account import Credentials
 from flask import Flask, request
 from telebot import types
