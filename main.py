@@ -1,10 +1,9 @@
 import os
 import telebot
 import json
-import gspread
-from google.oauth2.service_account import Credentials
 from flask import Flask, request
-from telebot import types
+from google.oauth2.service_account import Credentials
+import gspread
 
 # Загрузка ключа из переменной окружения
 creds = Credentials.from_service_account_info(
@@ -25,46 +24,33 @@ texts = {
     'en': {
         'welcome': 'Welcome to Merfee Exchange! Please choose your language:',
         'choose_language': 'Please choose a language:',
-        'choose_currency': 'Please choose the currency you want to buy:',
+        'choose_currency': 'Please choose the currency you want to buy:'
     },
     'ru': {
-        'welcome': 'Добро пожаловать в Merfee! Выберите, что хотите обменять.',
+        'welcome': 'Добро пожаловать в Merfee! Выберите язык:',
         'choose_language': 'Выберите язык:',
-        'choose_currency': 'Выберите валюту для покупки:',
-    },
-    # Добавьте другие языки, если нужно
+        'choose_currency': 'Выберите валюту, которую хотите купить:'
+    }
 }
 
-# Обработка команды /start
-@bot.message_handler(commands=['start'])
-def start(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    for lang in texts['en']['languages']:  # Получить список языков из текстов
-        markup.add(types.KeyboardButton(lang))
-    bot.send_message(message.chat.id, texts['en']['choose_language'], reply_markup=markup)
+# Инициализация Flask
+app = Flask(__name__)
 
-# Обработка выбора языка
-@bot.message_handler(func=lambda message: message.text in ['English', 'Русский', 'Deutsch', 'Français'])
-def set_language(message):
-    user_lang = message.text
-    bot.send_message(message.chat.id, texts[user_lang]['welcome'])
-
-# Обработка выбора валюты
-@bot.message_handler(func=lambda message: message.text in ['USD', 'EUR', 'BTC', 'ETH'])
-def choose_currency(message):
-    currency = message.text
-    bot.send_message(message.chat.id, texts[user_lang]['choose_currency'])
-
-# Обработка входящих обновлений от Telegram
-@bot.route('/' + TOKEN, methods=["POST"])
-def handle_webhook(request):
+@app.route('/' + TOKEN, methods=["POST"])
+def handle_webhook():
     json_str = request.get_data(as_text=True)  # Получаем данные из запроса
     update = telebot.types.Update.de_json(json_str)  # Преобразуем данные в формат для telebot
     bot.process_new_updates([update])  # Обрабатываем обновление
     return "OK", 200  # Отправляем успешный ответ на запрос
 
-# Запуск приложения Flask (вебхук)
-app = Flask(__name__)
+# Обработка команды /start
+@bot.message_handler(commands=['start'])
+def start(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for lang in texts['en']['choose_language']:
+        markup.add(telebot.types.KeyboardButton(lang))
+    bot.send_message(message.chat.id, texts['en']['welcome'], reply_markup=markup)
 
-if __name__ == '__main__':
+# Запуск Flask сервера
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
