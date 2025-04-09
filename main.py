@@ -62,7 +62,7 @@ creds = Credentials.from_service_account_info(
 # Подключение к Google Таблицам
 import gspread
 client = gspread.authorize(creds)
-sheet = client.open_by_key('your_spreadsheet_key').sheet1
+sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
 # Приветственное сообщение и выбор языка
 @bot.message_handler(commands=['start'])
 def start(message):
