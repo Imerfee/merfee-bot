@@ -10,7 +10,7 @@ TOKEN = '7426766382:AAG-Fw82VsIKowP_c3zVEoaVQQoa_LHWXeU'
 bot = telebot.TeleBot(TOKEN)
 
 # Загружаем ключ из переменной окружения
-SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_API_CREDENTIALS')
+SERVICE_ACCOUNT_FILE = '/etc/secrets/google_credentials.json'
 
 # Google Sheets API
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
