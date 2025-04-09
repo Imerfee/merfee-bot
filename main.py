@@ -13,7 +13,7 @@ creds = Credentials.from_service_account_info(
 )
 
 # Подключение к Google Таблицам
-client = gsread.authorize(creds)
+client = gspread.authorize(creds)
 sheet = client.open_by_key('1-sxuDqMpyU5R_ANEgZbtXY44HV84X3BgvUw4pL1Zg1c').sheet1
 
 # Создание бота
